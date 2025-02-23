@@ -1,30 +1,17 @@
 const express = require("express");
 const { UserModel, TodoModel } = require("./db");
+const {auth , JWT_SECRET}  = require("./auth")
 const mongoose = require("mongoose");
 mongoose.connect(
   "mongodb+srv://ramankurai27:9631WgXmDF52YvSB@cluster0.sh3z1.mongodb.net/todo-app-database"
 );
 const jwt = require("jsonwebtoken");
-const JWT_SECRET = "ramanpapa123";
 
 const app = express();
 
 app.use(express.json());
 
-const auth = (req, res, next) => {
-    const token = req.headers.token;
-  
-    const decodedData = jwt.verify(token, JWT_SECRET);
-  
-    if (decodedData) {
-      req.userId = decodedData.id;
-      next();
-    } else {
-      res.status(403).json({
-        message: "Invalid Credentials",
-      });
-    }
-  };
+
 
 app.post("/signup", async (req, res) => {
   const name = req.body.name;
@@ -68,17 +55,28 @@ app.post("/signin", async (req, res) => {
   }
 });
 
-app.post("/todo", auth, (req, res) => {
-  const userId = req.userId;
-  res.json({
-    userId : userId
-  });
+app.post("/todo", auth, async (req, res) => {
+   const userId = req.userId
+   const title = req.body.title
+   const done = req.body.done
+
+  await TodoModel.create({
+    title, 
+    userId,
+    done
+   })
+    res.json({
+    message : "Todo created"
+    });
 });
 
-app.get("/todos", auth, (req, res) => {
+app.get("/todos", auth, async (req, res) => {
   const userId = req.userId;
-  res.json({
+  const todos = await TodoModel.find({
     userId : userId
+  })
+  res.json({
+    todos
   });
 });
 
