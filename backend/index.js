@@ -1,7 +1,7 @@
 const express = require("express");
 const { UserModel, TodoModel } = require("./db");
-const {auth , JWT_SECRET}  = require("./auth")
-const bcrypt = require('bcrypt');
+const { auth, JWT_SECRET } = require("./auth");
+const bcrypt = require("bcrypt");
 
 const mongoose = require("mongoose");
 mongoose.connect(
@@ -17,35 +17,38 @@ app.post("/signup", async (req, res) => {
   const name = req.body.name;
   const email = req.body.email;
   const password = req.body.password;
-
-  const hashedPassword = await bcrypt.hash(password , 5)
-  console.log(hashedPassword)
-  await UserModel.create({
-    name: name,
-    email: email,
-    password: hashedPassword,
-  });
-
-  res.json({
-    message: "You are Now Signed Up",
-  });
+  try {
+    const hashedPassword = await bcrypt.hash(password, 5);
+    console.log(hashedPassword);
+    await UserModel.create({
+      name: name,
+      email: email,
+      password: hashedPassword,
+    });
+    res.json({
+      message: "You are Now Signed Up",
+    });
+  } catch (error) {
+    res.status(403).json({
+      message: "User already exists",
+    });
+  }
 });
 
 app.post("/signin", async (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
 
-  const user = await
-   UserModel.findOne({
+  const user = await UserModel.findOne({
     email: email,
   });
   if (!user) {
     return res.status(403).json({
-     message : "Invalid credentials" 
-    })
+      message: "Invalid credentials",
+    });
   }
 
-  const passwordMatch = await bcrypt.compare(password , user.password)
+  const passwordMatch = await bcrypt.compare(password, user.password);
   if (passwordMatch) {
     const token = jwt.sign(
       {
@@ -64,30 +67,28 @@ app.post("/signin", async (req, res) => {
 });
 
 app.post("/todo", auth, async (req, res) => {
-   const userId = req.userId
-   const title = req.body.title
-   const done = req.body.done
+  const userId = req.userId;
+  const title = req.body.title;
+  const done = req.body.done;
 
   await TodoModel.create({
-    title, 
+    title,
     userId,
-    done
-   })
-    res.json({
-    message : "Todo created"
-    });
+    done,
+  });
+  res.json({
+    message: "Todo created",
+  });
 });
 
 app.get("/todos", auth, async (req, res) => {
   const userId = req.userId;
   const todos = await TodoModel.find({
-    userId : userId
-  })
+    userId: userId,
+  });
   res.json({
-    todos
+    todos,
   });
 });
-
-
 
 app.listen(3000);
