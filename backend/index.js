@@ -2,6 +2,7 @@ const express = require("express");
 const { UserModel, TodoModel } = require("./db");
 const { auth, JWT_SECRET } = require("./auth");
 const bcrypt = require("bcrypt");
+const {z} = require("zod")
 
 const mongoose = require("mongoose");
 mongoose.connect(
@@ -14,6 +15,25 @@ const app = express();
 app.use(express.json());
 
 app.post("/signup", async (req, res) => {
+  const requiredBody = z.object({
+    email : z.string().min(3).max(100).email(),
+    password : z.string().min(3).max(100)
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[\W_]/, "Password must contain at least one special character"),
+    name : z.string().min(3).max(100)
+  })
+
+  const parsedDataWithSuccess = requiredBody.safeParse(req.body);
+
+  if (!parsedDataWithSuccess.success) {
+    res.json({
+      message : "Incorrect Format",
+      error : parsedDataWithSuccess.error
+    })
+    return 
+  }
   const name = req.body.name;
   const email = req.body.email;
   const password = req.body.password;
