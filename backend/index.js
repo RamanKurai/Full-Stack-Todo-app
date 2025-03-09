@@ -14,6 +14,8 @@ const app = express();
 
 app.use(express.json());
 
+
+
 app.post("/signup", async (req, res) => {
   const requiredBody = z.object({
     email : z.string().min(3).max(100).email(),
@@ -59,7 +61,7 @@ app.post("/signin", async (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
 
-  const user = await UserModel.findOne({
+  const user = await UserModel.find({
     email: email,
   });
   if (!user) {
