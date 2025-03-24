@@ -2,89 +2,61 @@ const express = require("express");
 const { UserModel, TodoModel } = require("./db");
 const { auth, JWT_SECRET } = require("./auth");
 const bcrypt = require("bcrypt");
-const {z} = require("zod")
-
+const { z } = require("zod");
+const cors = require("cors");
 const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
+
+// Connect to MongoDB
 mongoose.connect(
   "mongodb+srv://ramankurai27:ToHICv33ei39Lb51@cluster0.sh3z1.mongodb.net/todo-app-database"
 );
-const jwt = require("jsonwebtoken");
 
 const app = express();
 
+// Middleware
 app.use(express.json());
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 
-
-
+// Signup Route
 app.post("/signup", async (req, res) => {
-  const requiredBody = z.object({
-    email : z.string().min(3).max(100).email(),
-    password : z.string().min(3).max(100)
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number")
-    .regex(/[\W_]/, "Password must contain at least one special character"),
-    name : z.string().min(3).max(100)
-  })
+  const schema = z.object({
+    email: z.string().email(),
+    password: z.string().min(3).regex(/[A-Z]/).regex(/[a-z]/).regex(/[0-9]/).regex(/[\W_]/),
+    name: z.string().min(3)
+  });
 
-  const parsedDataWithSuccess = requiredBody.safeParse(req.body);
-
-  if (!parsedDataWithSuccess.success) {
-    res.json({
-      message : "Incorrect Format",
-      error : parsedDataWithSuccess.error
-    })
-    return 
+  const parsedData = schema.safeParse(req.body);
+  if (!parsedData.success) {
+    return res.status(400).json({ message: "Invalid data format", error: parsedData.error });
   }
-  const name = req.body.name;
-  const email = req.body.email;
-  const password = req.body.password;
+
+  const { name, email, password } = req.body;
+
   try {
     const hashedPassword = await bcrypt.hash(password, 5);
-    console.log(hashedPassword);
-    await UserModel.create({
-      name: name,
-      email: email,
-      password: hashedPassword,
-    });
-    res.json({
-      message: "You are Now Signed Up",
-    });
+    await UserModel.create({ name, email, password: hashedPassword });
+    res.json({ message: "Signup successful" });
   } catch (error) {
-    res.status(403).json({
-      message: "User already exists",
-    });
+    res.status(400).json({ message: "User already exists" });
   }
 });
 
+// Signin Route
 app.post("/signin", async (req, res) => {
-  const email = req.body.email;
-  const password = req.body.password;
+  const { email, password } = req.body;
+  const user = await UserModel.findOne({ email });
 
-  const user = await UserModel.find({
-    email: email,
-  });
   if (!user) {
-    return res.status(403).json({
-      message: "Invalid credentials",
-    });
+    return res.status(403).json({ message: "Invalid credentials" });
   }
 
   const passwordMatch = await bcrypt.compare(password, user.password);
   if (passwordMatch) {
-    const token = jwt.sign(
-      {
-        id: user._id.toString(),
-      },
-      JWT_SECRET
-    );
-    res.json({
-      token: token,
-    });
+    const token = jwt.sign({ id: user._id.toString() }, JWT_SECRET);
+    res.json({ token });
   } else {
-    res.status(403).json({
-      message: "Invalid Credentials",
-    });
+    res.status(403).json({ message: "Invalid Credentials" });
   }
 });
 
@@ -113,4 +85,4 @@ app.get("/todos", auth, async (req, res) => {
   });
 });
 
-app.listen(3000);
+app.listen(5000);
